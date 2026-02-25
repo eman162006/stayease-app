@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "856343090062",
+    "project_id": "stayease-d24db",
+    "storage_bucket": "stayease-d24db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:856343090062:android:953b76041c68b21a9e8adf",
+        "android_client_info": {
+          "package_name": "com.example.stayease"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDZGau4uK040MhatG2kesyRUVtMkIx4_Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

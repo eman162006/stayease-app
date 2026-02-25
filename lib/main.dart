@@ -10,15 +10,22 @@ import 'package:stayease/providers/booking_provider.dart';
 
 import 'providers/favorities_provider.dart';
 import 'features/splash_screen.dart';
-void main() {
+import 'package:firebase_core/firebase_core.dart' show Firebase;
+import 'firebase_options.dart';
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(
-   MultiProvider(
-  providers: [
-    ChangeNotifierProvider(create: (_) => AuthProvider()..load()),
-    ChangeNotifierProvider(create: (_) => FavoritesProvider()),
-    ChangeNotifierProvider(create: (_) => BookingsProvider()..load()),
-  ],
-  child: const MyApp(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()..load()),
+        ChangeNotifierProvider(create: (_) => FavoritesProvider()),
+        ChangeNotifierProvider(create: (_) => BookingsProvider()..load()),
+      ],
+      child: const MyApp(),
     ),
   );
 }
