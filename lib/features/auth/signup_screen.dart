@@ -55,23 +55,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
               height: 52,
               child: ElevatedButton(
                 onPressed: auth.loading
-                    ? null
-                    : () async {
-                        try {
-                          await context.read<AuthProvider>().register(
-                                name: _name.text,
-                                email: _email.text,
-                                password: _pass.text,
-                              );
-                          if (!mounted) return;
-                          Navigator.pop(context); // رجعي عالـ Login أو سيبك
-                        } catch (e) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(e.toString())),
-                          );
-                        }
-                      },
+    ? null
+    : () async {
+        try {
+          await context.read<AuthProvider>().signupWithDetails(
+                _email.text,
+                _pass.text,
+                _name.text,
+              );
+          if (!mounted) return;
+          Navigator.pop(context);
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString())),
+          );
+        }
+      },
                 child: auth.loading
                     ? const SizedBox(
                         width: 22,
@@ -81,7 +81,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     : const Text("Create Account"),
               ),
             ),
-          ],
+          ], 
         ),
       ),
     );

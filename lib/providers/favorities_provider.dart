@@ -1,18 +1,23 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class FavoritesProvider extends ChangeNotifier {
-  final List<String> _favoriteIds = [];
+  final Set<String> _ids = {};
 
-  List<String> get favorites => List.unmodifiable(_favoriteIds);
+  bool isFavorite(String id) => _ids.contains(id);
 
-  bool isFavorite(String id) => _favoriteIds.contains(id);
+  Set<String> get ids => _ids;
 
   void toggleFavorite(String id) {
-    if (_favoriteIds.contains(id)) {
-      _favoriteIds.remove(id);
+    if (_ids.contains(id)) {
+      _ids.remove(id);
     } else {
-      _favoriteIds.add(id);
+      _ids.add(id);
     }
+    notifyListeners();
+  }
+
+  void clear() {
+    _ids.clear();
     notifyListeners();
   }
 }

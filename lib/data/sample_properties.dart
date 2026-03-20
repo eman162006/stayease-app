@@ -1,6 +1,6 @@
 import '../models/property.dart';
 
-const sampleProperties = <Property>[
+final sampleProperties = <Property>[
   Property(
     id: 'p1',
     title: 'Modern Apartment',

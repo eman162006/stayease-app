@@ -1,115 +1,95 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/app_user.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthProvider extends ChangeNotifier {
-  static const _kUsersKey = "users_db"; // database local
-  static const _kSessionKey = "logged_in_user"; // session
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  bool _isLoggedIn = false;
-  bool get isLoggedIn => _isLoggedIn;
-
-  AppUser? _currentUser;
-  AppUser? get currentUser => _currentUser;
-
+  User? _user;
   bool _loading = false;
+
+  User? get user => _user;
   bool get loading => _loading;
+  bool get isLoggedIn => _user != null;
 
-  Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final session = prefs.getString(_kSessionKey);
-    if (session != null) {
-      _currentUser = AppUser.fromJson(jsonDecode(session));
-      _isLoggedIn = true;
-    }
-    notifyListeners();
+  AuthProvider() {
+    _auth.authStateChanges().listen((u) {
+      _user = u;
+      notifyListeners();
+    });
   }
 
-  Future<Map<String, dynamic>> _getUsers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_kUsersKey);
-    if (raw == null) return {};
-    return jsonDecode(raw) as Map<String, dynamic>;
-  }
+  // =========================
+  // ✅ SIGN UP WITH NAME
+  // =========================
+  Future<void> signupWithDetails(
+      String email, String password, String fullName) async {
+    try {
+      _loading = true;
+      notifyListeners();
 
-  Future<void> _saveUsers(Map<String, dynamic> users) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kUsersKey, jsonEncode(users));
-  }
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
 
-  Future<void> register({
-    required String name,
-    required String email,
-    required String password,
-  }) async {
-    _loading = true;
-    notifyListeners();
+      // ✅ Save display name inside Firebase Auth
+      await cred.user!.updateDisplayName(fullName.trim());
+      await cred.user!.reload();
 
-    final users = await _getUsers();
-    final key = email.trim().toLowerCase();
+      // ✅ Save user document in Firestore
+      await _db.collection('users').doc(cred.user!.uid).set({
+        'uid': cred.user!.uid,
+        'fullName': fullName.trim(),
+        'email': email.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-    if (users.containsKey(key)) {
+      _user = _auth.currentUser;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(e.message ?? "Signup failed");
+    } finally {
       _loading = false;
       notifyListeners();
-      throw "Email already exists";
     }
-
-    users[key] = {
-      "password": password, // (ملاحظة: للتجربة فقط، بالواقع لازم تشفير)
-      "name": name.trim(),
-      "email": key,
-    };
-
-    await _saveUsers(users);
-
-    // auto-login after sign up
-    final prefs = await SharedPreferences.getInstance();
-    _currentUser = AppUser(name: name.trim(), email: key);
-    await prefs.setString(_kSessionKey, jsonEncode(_currentUser!.toJson()));
-    _isLoggedIn = true;
-
-    _loading = false;
-    notifyListeners();
   }
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
-    _loading = true;
-    notifyListeners();
+  // =========================
+  // ✅ LOGIN
+  // =========================
+  Future<void> login(String email, String password) async {
+    try {
+      _loading = true;
+      notifyListeners();
 
-    final users = await _getUsers();
-    final key = email.trim().toLowerCase();
+      await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
 
-    if (!users.containsKey(key)) {
+      _user = _auth.currentUser;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(e.message ?? "Login failed");
+    } finally {
       _loading = false;
       notifyListeners();
-      throw "User not found";
     }
-
-    final data = users[key] as Map<String, dynamic>;
-    if (data["password"] != password) {
-      _loading = false;
-      notifyListeners();
-      throw "Wrong password";
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    _currentUser = AppUser(name: data["name"], email: data["email"]);
-    await prefs.setString(_kSessionKey, jsonEncode(_currentUser!.toJson()));
-    _isLoggedIn = true;
-
-    _loading = false;
-    notifyListeners();
   }
 
+  // =========================
+  // ✅ LOGOUT
+  // =========================
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kSessionKey);
-    _currentUser = null;
-    _isLoggedIn = false;
+    await _auth.signOut();
+    _user = null;
     notifyListeners();
   }
+  Future<void> resetPassword(String email) async {
+  try {
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  } on FirebaseAuthException catch (e) {
+    throw Exception(e.message ?? "Reset failed");
+  }
+}
 }

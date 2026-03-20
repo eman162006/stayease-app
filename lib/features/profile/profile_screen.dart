@@ -8,13 +8,25 @@ import '../../providers/auth_provider.dart';
 import '../profile/edit_profile.dart';
 import '../favorites/favorites_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final user = auth.currentUser;
+final user = auth.user; // أو auth.currentUser
+
+final name = user?.displayName?.trim().isNotEmpty == true
+    ? user!.displayName!
+    : "User";
+
+final email = user?.email ?? "";
+    
 
    return Scaffold(
   backgroundColor: const Color(0xFFF8FAFC),
@@ -26,36 +38,50 @@ class ProfileScreen extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       children: [
         // Header
-        Column(
-          children: [
-            Container(
-              width: 84,
-              height: 84,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                    color: Colors.black.withOpacity(0.08),
-                  ),
-                ],
+       // Header
+Column(
+  children: [
+    Container(
+      width: 84,
+      height: 84,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.08),
+          ),
+        ],
+      ),
+      child: (user?.photoURL != null)
+          ? ClipOval(
+              child: Image.network(
+                user!.photoURL!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 38),
               ),
-              child: const Icon(Icons.person, size: 38),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              user?.name ?? "User Name",
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              user?.email ?? "user@email.com",
-              style: const TextStyle(color: Color(0xFF6B7280)),
-            ),
-          ],
-        ),
+            )
+          : const Icon(Icons.person, size: 38),
+    ),
+    const SizedBox(height: 16),
+
+    Text(
+      (user?.displayName?.trim().isNotEmpty ?? false)
+          ? user!.displayName!.trim()
+          : "User Name",
+      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+    ),
+
+    const SizedBox(height: 6),
+
+    Text(
+      (user?.email?.trim().isNotEmpty ?? false) ? user!.email!.trim() : "",
+      style: const TextStyle(color: Color(0xFF6B7280)),
+    ),
+  ],
+),
 
         const SizedBox(height: 28),
 
@@ -89,11 +115,14 @@ class ProfileScreen extends StatelessWidget {
               _ProfileTile(
                 icon: Icons.edit,
                 title: "Edit Profile",
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  // Wait for the edit screen to close
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                   );
+                  // Force the UI to refresh with the new name
+                  setState(() {});
                 },
               ),
               const Divider(height: 1),

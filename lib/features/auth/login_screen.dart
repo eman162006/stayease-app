@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -41,30 +42,26 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if (_loading) return;
+  if (!_formKey.currentState!.validate()) return;
 
-    final ok = _formKey.currentState!.validate();
-    if (!ok) return;
+  setState(() => _loading = true);
 
-    setState(() => _loading = true);
+  try {
+    await context.read<AuthProvider>().login(
+      _emailController.text,
+      _passwordController.text,
+    );
 
-    try {
-      await context.read<AuthProvider>().login(
-  email: _emailController.text,
-  password: _passwordController.text,
-);
-      
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(e.toString())),
+    );
   }
 
+  if (!mounted) return;
+
+  setState(() => _loading = false);
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,53 +110,61 @@ Align(
   child: TextButton(
     onPressed: _loading
         ? null
-        : () {
-            showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text("Forgot Password"),
-                content: const Text(
-                  "We will send a reset link to your email (demo).",
+        : () async {
+            final email = _emailController.text.trim();
+
+            if (email.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Enter your email first"),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("OK"),
-                  ),
-                ],
-              ),
-            );
+              );
+              return;
+            }
+
+            try {
+              await context.read<AuthProvider>().resetPassword(email);
+
+              if (!context.mounted) return;
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Reset link sent ✅ Check your email"),
+                ),
+              );
+            } catch (e) {
+              if (!context.mounted) return;
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(e.toString()),
+                ),
+              );
+            }
           },
     child: const Text("Forgot password?"),
   ),
 ),
 
-const SizedBox(height: 6),
+              const SizedBox(height: 24),
 
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F172A),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
                   onPressed: _loading ? null : _handleLogin,
                   child: _loading
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3,
-                            color: Colors.white,
-                          ),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text("Login", style: TextStyle(fontSize: 16)),
+                      : const Text("Login"),
                 ),
               ),
+
               const SizedBox(height: 16),
+
               TextButton(
                 onPressed: () {
                   Navigator.push(
@@ -170,7 +175,6 @@ const SizedBox(height: 6),
                 child: const Text("Don't have an account? Sign Up"),
               ),
             ],
-            
           ),
         ),
       ),

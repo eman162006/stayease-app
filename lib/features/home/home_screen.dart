@@ -4,6 +4,8 @@ import 'package:stayease/providers/favorities_provider.dart';
 import '../details/details_screen.dart';
 import '../../models/property.dart';
 import '../../data/sample_properties.dart';
+import '../../services/properties_service.dart';
+import '../../widgets/property_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _sort = 'recommended'; // 'low' | 'high' | 'recommended'
  static const String kAll = "__ALL__";
 String _selectedLocation = kAll;
+final PropertiesService _propertiesService = PropertiesService();
 
 late final List<String> allLocations;
 
@@ -32,7 +35,7 @@ void initState() {
     ..sort();
 }
 
-void _openFilters() {
+void _openFilters(List<String> locations) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -40,22 +43,17 @@ void _openFilters() {
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     builder: (_) {
-
-      // ✅ LOCAL VARIABLES (هوني محلهم)
       String loc = _selectedLocation;
       double min = _minPrice;
       double max = _maxPrice;
-      String sort = _sort;
 
       return StatefulBuilder(
-        builder: (context, setSheet) {
-          return Padding(
+        builder: (context, setSheet) => Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 const Text("Location",
                     style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
@@ -63,26 +61,19 @@ void _openFilters() {
                 DropdownButtonFormField<String>(
                   value: loc,
                   isExpanded: true,
-                  items: [
-                    const DropdownMenuItem(
-                        value: kAll, child: Text("All")),
-                    ...allLocations.map(
-                      (l) => DropdownMenuItem(
-                        value: l,
-                        child: Text(l),
-                      ),
-                    ),
-                  ],
-                  onChanged: (v) =>
-                      setSheet(() => loc = v ?? kAll),
+                  items: locations
+                      .map((l) => DropdownMenuItem(
+                            value: l,
+                            child: Text(l == kAll ? "All" : l),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setSheet(() => loc = v ?? kAll),
                 ),
 
                 const SizedBox(height: 18),
-
                 const Text("Price per night",
                     style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
-
                 Text("\$${min.toInt()} - \$${max.toInt()}"),
 
                 RangeSlider(
@@ -102,14 +93,11 @@ void _openFilters() {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () {
-                          setSheet(() {
-                            loc = kAll;
-                            min = 0;
-                            max = 500;
-                            sort = 'recommended';
-                          });
-                        },
+                        onPressed: () => setSheet(() {
+                          loc = kAll;
+                          min = 0;
+                          max = 500;
+                        }),
                         child: const Text("Reset"),
                       ),
                     ),
@@ -121,7 +109,6 @@ void _openFilters() {
                             _selectedLocation = loc;
                             _minPrice = min;
                             _maxPrice = max;
-                            _sort = sort;
                           });
                           Navigator.pop(context);
                         },
@@ -132,8 +119,7 @@ void _openFilters() {
                 ),
               ],
             ),
-          );
-        },
+          ),
       );
     },
   );
@@ -143,45 +129,13 @@ void _openFilters() {
     _searchCtrl.dispose();
     super.dispose();
   }
-  @override
+ @override
   Widget build(BuildContext context) {
     final locations = <String>{
   for (final p in sampleProperties) p.location.trim(),
 }.toList()
   ..sort();
-
-final queryText = _query.trim().toLowerCase();
-
-final filtered = sampleProperties.where((p) {
-  // ✅ price filter
-  final price = p.pricePerNight.toDouble();
-  if (price < _minPrice) return false;
-  if (price > _maxPrice) return false;
-
-  // location
-  if (_selectedLocation != kAll &&
-      p.location.trim().toLowerCase() != _selectedLocation.toLowerCase()) {
-    return false;
-  }
-
-  // search
-  final q = _query.trim().toLowerCase();
-  if (q.isNotEmpty) {
-    final match = p.title.toLowerCase().contains(q) ||
-        p.location.toLowerCase().contains(q);
-    if (!match) return false;
-  }
-
-  return true;
-}).toList();
-
-// 4) sort
-if (_sort == 'low') {
-  filtered.sort((a, b) => a.pricePerNight.compareTo(b.pricePerNight));
-} else if (_sort == 'high') {
-  filtered.sort((a, b) => b.pricePerNight.compareTo(a.pricePerNight));
-}
-
+  final service = PropertiesService(); 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
@@ -225,110 +179,137 @@ if (_sort == 'low') {
 
               const SizedBox(height: 16),
 
-              // ✅ Search bar (واحد فقط)
-             // ✅ Search + Filter Row
-Row(
-  children: [
-    Expanded(
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-              color: Colors.black.withOpacity(0.06),
-            ),
-          ],
-        ),
-        child: TextField(
-          controller: _searchCtrl,
-          onChanged: (value) {
-            setState(() {
-              _query = value.toLowerCase().trim();
-            });
-          },
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.search, color: Color(0xFF6B7280)),
-            hintText: 'Search destinations',
-            hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 16),
-            suffixIcon: _query.isEmpty
-                ? null
-                : IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
-                    onPressed: () {
-                      _searchCtrl.clear();
-                      setState(() => _query = "");
-                    },
-                  ),
-          ),
-        ),
-      ),
-    ),
-    const SizedBox(width: 12),
-
-    // ✅ Filter button
-    SizedBox(
-      height: 52,
-      width: 52,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF111827),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFE5E7EB)),
-          ),
-        ),
-        onPressed: _openFilters,
-        child: const Icon(Icons.tune),
-      ),
-    ),
-  ],
-),
-
-const SizedBox(height: 12),
-
-// ✅ نتيجة البحث
-if (_query.isNotEmpty)
-  Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      "${filtered.length} result(s)",
-      style: const TextStyle(color: Color(0xFF6B7280)),
-    ),
-  ),
-
-const SizedBox(height: 8),
-
 // ✅ List
 Expanded(
-  child: filtered.isEmpty
-      ? const Center(
-          child: Text(
-            "No results found",
-            style: TextStyle(color: Color(0xFF6B7280)),
+  child: StreamBuilder<List<Property>>(
+    stream: _propertiesService.watchProperties(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (snapshot.hasError) {
+        return Center(child: Text("Error: ${snapshot.error}"));
+      }
+
+      final properties = snapshot.data ?? []; 
+
+      // ✅ locations من Firestore مش sampleProperties
+      final locations = <String>{
+        kAll,
+        for (final p in properties) p.location.trim(),
+      }.toList()
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+      // ✅ الفلترة
+      final queryText = _query.trim().toLowerCase();
+
+      String norm(String s) => s.trim().toLowerCase();
+
+      final filtered = properties.where((p) {
+        final loc = p.location;
+
+        final matchSearch = queryText.isEmpty ||
+            p.title.toLowerCase().contains(queryText) ||
+            loc.toLowerCase().contains(queryText);
+
+        final matchLocation = (_selectedLocation == kAll) ||
+            (norm(loc) == norm(_selectedLocation));
+
+        final matchPrice =
+            p.pricePerNight >= _minPrice && p.pricePerNight <= _maxPrice;
+
+        return matchSearch && matchLocation && matchPrice;
+      }).toList();
+
+      // ✅ هون منعرض الواجهة + زر الفلتر مع locations الصح
+      return Column(
+        children: [
+          // ✅ Search + Filter Row (حطيه هون)
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                        color: Colors.black.withOpacity(0.06),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: (value) {
+                      setState(() {
+                        _query = value.toLowerCase().trim();
+                      });
+                    },
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search, color: Color(0xFF6B7280)),
+                      hintText: 'Search destinations',
+                      hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() => _query = "");
+                              },
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 52,
+                width: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF111827),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                  ),
+                  onPressed: () => _openFilters(locations), // ✅ هيك
+                  child: const Icon(Icons.tune),
+                ),
+              ),
+            ],
           ),
-        )
-      : ListView.separated(
-          itemCount: filtered.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 20),
-          itemBuilder: (context, index) {
-            final p = filtered[index];
-            return _PropertyCard(property: p);
-          },
-        ),
-      ),
-    ],
+
+          const SizedBox(height: 16),
+
+          Expanded(
+            child: filtered.isEmpty
+                ? const Center(child: Text("No results found"))
+                : ListView.separated(
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 20),
+                    itemBuilder: (context, i) =>
+                        _PropertyCard(property: filtered[i]),
+                  ),
+          ),
+        ],
+      );
+    },
   ),
 ),
-),
-);
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
