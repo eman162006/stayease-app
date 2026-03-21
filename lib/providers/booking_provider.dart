@@ -44,7 +44,7 @@ class BookingsProvider extends ChangeNotifier {
       checkOut: checkOut,
       guests: guests,
       total: total,
-      status: 'Pending',
+      status: 'Confirmed',
     );
 
     _bookings.insert(0, booking);
@@ -95,5 +95,11 @@ class BookingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kBookingsKey);
+  }
+
+  Future<void> removeBooking(String id) async {
+    _bookings.removeWhere((b) => b.id == id);
+    notifyListeners();
+    await _save();
   }
 }
